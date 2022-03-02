@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 import React, { useEffect, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
@@ -27,6 +28,7 @@ const GuessDistributionLine = ({ position, amount, percentage }) => {
 					margin: 5,
 					padding: 5,
 					width: `${percentage}`,
+					minWidth: 20,
 				}}>
 				<Text style={{ color: colors.lightgrey }}>{amount}</Text>
 			</View>
@@ -34,16 +36,34 @@ const GuessDistributionLine = ({ position, amount, percentage }) => {
 	);
 };
 
-const GuessDistribution = () => {
+const GuessDistribution = ({ distribution }) => {
+	if (!distribution) return null;
+
+	const sum = distribution.reduce((total, dist) => dist + total, 0);
+
 	return (
 		<View style={{ width: "100%", padding: 20 }}>
-			<GuessDistributionLine position='0' amount={2} percentage='50%' />
+			{distribution.map((d, i) => {
+				return (
+					<GuessDistributionLine
+						key={i}
+						position={i + 1}
+						amount={d}
+						percentage={`${(100 * d) / sum}%`}
+					/>
+				);
+			})}
 		</View>
 	);
 };
 
 const EndScreen = ({ won = false, rows, getCellBGColor }) => {
 	const [secondTillTomorrow, setSecondsTillTomorrow] = useState(0);
+	const [played, setPlayed] = useState(0);
+	const [winRate, setWinRate] = useState(0);
+	const [curStreak, setCurStreak] = useState(0);
+	const [maxStreak, setMaxStreak] = useState(0);
+	const [distribution, setDistribution] = useState(null);
 
 	const formatSeconds = () => {
 		const hours = Math.floor(secondTillTomorrow / 60 / 60);
@@ -74,6 +94,56 @@ const EndScreen = ({ won = false, rows, getCellBGColor }) => {
 		);
 	};
 
+	const readState = async () => {
+		let data;
+		try {
+			const dataString = await AsyncStorage.getItem("@game");
+			data = JSON.parse(dataString);
+		} catch (error) {
+			console.log(error);
+		}
+		const keys = Object.keys(data);
+		const values = Object.values(data);
+
+		setPlayed(keys.length);
+
+		const numberOfWins = values.filter(game => game.gameState === "won").length;
+		setWinRate(Math.floor((numberOfWins / keys.length) * 100));
+
+		let _curStreak = 0;
+		let maxStreak = 0;
+		let prevDay = 0;
+		keys.forEach(key => {
+			const day = parseInt(key.split("-")[1]);
+			if (data[key].gameState === "won" && _curStreak === 0) {
+				_curStreak += 1;
+			} else if (data[key].gameState === "won" && prevDay + 1 === day) {
+				_curStreak += 1;
+			} else {
+				if (_curStreak > maxStreak) {
+					maxStreak = _curStreak;
+				}
+				_curStreak = data[key].gameState === "won" ? 1 : 0;
+			}
+			prevDay = day;
+		});
+		setCurStreak(_curStreak);
+		setMaxStreak(maxStreak);
+
+		//guess distribution
+
+		const dist = [0, 0, 0, 0, 0, 0];
+
+		values.map(game => {
+			if (game.gameState === "won") {
+				const tries = game.rows.filter(row => row[0]).length;
+				dist[tries] = dist[tries] + 1;
+			}
+		});
+		console.log(dist);
+		setDistribution(dist);
+	};
+
 	useEffect(() => {
 		const updateTime = () => {
 			const now = new Date();
@@ -91,6 +161,10 @@ const EndScreen = ({ won = false, rows, getCellBGColor }) => {
 		return () => clearInterval(interval);
 	}, []);
 
+	useEffect(() => {
+		readState();
+	}, []);
+
 	return (
 		<View style={{ width: "100%", alignItems: "center" }}>
 			<Text style={styles.title}>
@@ -98,13 +172,13 @@ const EndScreen = ({ won = false, rows, getCellBGColor }) => {
 			</Text>
 			<Text style={styles.subtitle}>Statistics</Text>
 			<View style={{ flexDirection: "row", marginBottom: 20 }}>
-				<Number number={3} label='Played' />
-				<Number number={3} label='Win %' />
-				<Number number={3} label='Cur Streak' />
-				<Number number={3} label='Max Streak' />
+				<Number number={played} label='Played' />
+				<Number number={winRate} label='Win %' />
+				<Number number={curStreak} label='Cur Streak' />
+				<Number number={maxStreak} label='Max Streak' />
 			</View>
 			<Text style={styles.subtitle}>Guess Distribution</Text>
-			<GuessDistribution />
+			<GuessDistribution distribution={distribution} />
 			<View style={{ flexDirection: "row", padding: 10 }}>
 				<View style={{ alignItems: "center", flex: 1 }}>
 					<Text style={{ color: colors.lightgrey }}>Next Wordle</Text>
