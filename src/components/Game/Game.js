@@ -1,16 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Clipboard from "expo-clipboard";
 import { useEffect, useState } from "react";
 import {
 	ActivityIndicator,
-	Alert,
 	ScrollView,
 	StyleSheet,
 	Text,
 	View,
 } from "react-native";
-import { CLEAR, colors, colorsToEmoji, ENTER } from "../../constants";
+import { CLEAR, colors, ENTER } from "../../constants";
 import { copyArray, getDayOfYear } from "../../utils";
+import EndScreen from "../EndScreen/EndScreen";
 import Keyboard from "../Keyboard";
 
 const TRIES = 6;
@@ -90,34 +89,10 @@ export default function Game() {
 		row.filter((cell, j) => getCellBGColor(i, j) === colors.darkgrey),
 	);
 
-	const shareResult = () => {
-		const textMap = rows
-			.map((row, i) =>
-				row.map((cell, j) => colorsToEmoji[getCellBGColor(i, j)]).join(""),
-			)
-			.filter(row => row)
-			.join("\n");
-
-		const textToShare = `WORDLE \n${textMap}`;
-
-		Clipboard.setString(textToShare);
-		Alert.alert(
-			"Copied Successfully",
-			"Share your score on your social media!",
-		);
-	};
-
 	const checkGameState = () => {
 		if (checkIfWon() && gameState !== "won") {
-			Alert.alert("Hurray!", "You Won!", [
-				{
-					text: "Share",
-					onPress: shareResult,
-				},
-			]);
 			setGameState("won");
 		} else if (checkIfLost() && gameState !== "lost") {
-			Alert.alert("Meh!", "Try again tomorrow!");
 			setGameState("lost");
 		}
 	};
@@ -192,6 +167,16 @@ export default function Game() {
 			<View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
 				<ActivityIndicator size='large' color='#00ff00' />
 			</View>
+		);
+	}
+
+	if (gameState !== "playing") {
+		return (
+			<EndScreen
+				won={gameState === "won"}
+				rows={rows}
+				getCellBGColor={getCellBGColor}
+			/>
 		);
 	}
 
