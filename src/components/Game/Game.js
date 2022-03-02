@@ -7,6 +7,7 @@ import {
 	Text,
 	View,
 } from "react-native";
+import Animated, { SlideInLeft } from "react-native-reanimated";
 import { CLEAR, colors, ENTER } from "../../constants";
 import { copyArray, getDayOfYear } from "../../utils";
 import EndScreen from "../EndScreen/EndScreen";
@@ -16,6 +17,7 @@ const TRIES = 6;
 const dayKey = `day-${getDayOfYear()}`;
 
 export default function Game() {
+	// AsyncStorage.removeItem("@game");
 	let word = "hello";
 	const letters = word.split("");
 
@@ -184,7 +186,10 @@ export default function Game() {
 		<>
 			<ScrollView style={styles.map}>
 				{rows.map((r, index) => (
-					<View style={styles.row} key={`row-${index}`}>
+					<Animated.View
+						entering={SlideInLeft.delay(index * 1000)}
+						style={styles.row}
+						key={`row-${index}`}>
 						{r.map((l, i) => (
 							<View
 								style={[
@@ -200,7 +205,7 @@ export default function Game() {
 								<Text style={styles.cellText}>{l.toUpperCase()}</Text>
 							</View>
 						))}
-					</View>
+					</Animated.View>
 				))}
 			</ScrollView>
 

@@ -1,7 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 import React, { useEffect, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+	ActivityIndicator,
+	Alert,
+	Pressable,
+	StyleSheet,
+	Text,
+	View,
+} from "react-native";
 import { colors, colorsToEmoji } from "../../constants";
 
 const Number = ({ number, label }) => {
@@ -64,6 +71,11 @@ const EndScreen = ({ won = false, rows, getCellBGColor }) => {
 	const [curStreak, setCurStreak] = useState(0);
 	const [maxStreak, setMaxStreak] = useState(0);
 	const [distribution, setDistribution] = useState(null);
+	const [loaded, setLoaded] = useState(false);
+
+	useEffect(() => {
+		readState();
+	}, []);
 
 	const formatSeconds = () => {
 		const hours = Math.floor(secondTillTomorrow / 60 / 60);
@@ -108,6 +120,7 @@ const EndScreen = ({ won = false, rows, getCellBGColor }) => {
 		setPlayed(keys.length);
 
 		const numberOfWins = values.filter(game => game.gameState === "won").length;
+
 		setWinRate(Math.floor((numberOfWins / keys.length) * 100));
 
 		let _curStreak = 0;
@@ -127,6 +140,7 @@ const EndScreen = ({ won = false, rows, getCellBGColor }) => {
 			}
 			prevDay = day;
 		});
+
 		setCurStreak(_curStreak);
 		setMaxStreak(maxStreak);
 
@@ -134,14 +148,14 @@ const EndScreen = ({ won = false, rows, getCellBGColor }) => {
 
 		const dist = [0, 0, 0, 0, 0, 0];
 
-		values.map(game => {
+		values.forEach(game => {
 			if (game.gameState === "won") {
 				const tries = game.rows.filter(row => row[0]).length;
 				dist[tries] = dist[tries] + 1;
 			}
 		});
-		console.log(dist);
 		setDistribution(dist);
+		setLoaded(true);
 	};
 
 	useEffect(() => {
@@ -161,9 +175,13 @@ const EndScreen = ({ won = false, rows, getCellBGColor }) => {
 		return () => clearInterval(interval);
 	}, []);
 
-	useEffect(() => {
-		readState();
-	}, []);
+	if (!loaded) {
+		return (
+			<View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+				<ActivityIndicator size='large' color='#00ff00' />
+			</View>
+		);
+	}
 
 	return (
 		<View style={{ width: "100%", alignItems: "center" }}>
@@ -171,12 +189,14 @@ const EndScreen = ({ won = false, rows, getCellBGColor }) => {
 				{won ? "Congrats" : "Meh, Try Again Tomorrow"}
 			</Text>
 			<Text style={styles.subtitle}>Statistics</Text>
+
 			<View style={{ flexDirection: "row", marginBottom: 20 }}>
 				<Number number={played} label='Played' />
 				<Number number={winRate} label='Win %' />
 				<Number number={curStreak} label='Cur Streak' />
 				<Number number={maxStreak} label='Max Streak' />
 			</View>
+
 			<Text style={styles.subtitle}>Guess Distribution</Text>
 			<GuessDistribution distribution={distribution} />
 			<View style={{ flexDirection: "row", padding: 10 }}>
